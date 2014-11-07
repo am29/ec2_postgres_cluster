@@ -2,9 +2,40 @@
 
 PostgreSQL 9.4 on CentOS 7 on EC2 using striped EBS volumes. (Largely proof-of-concept-quality.)
 
-Major points of interest:
+## Playbooks and inventory
+
+`inventory` is a dynamic inventory file that groups hosts by the value of their `group` tag.
+
+- `network.yml` creates or updates the CloudFormation template in
+  `files/template.json`. It defines a VPC with two subnets, one
+  network ACL and one security group.
+
+- `create_instances.yml` creates two EC2 instances, one in each
+  subnet, in the groups `pg_master` and `pg_replica`, respectively.
+
+- `provision_master.yml` creates and starts a new PostgreSQL master
+  with one replication slot. PGDATA is located on an EBS-backed RAID 0
+  array.
+
+- `snapshot_master.yml` snapshots the PostgreSQL database by briefly
+  freezing the logical volumes, requesting snapshots of the underlying
+  EBS volumes, and then unfreezing them.
+
+- `provision_slave.yml` creates and starts a new PostgreSQL replica
+  given the volume_group and timestamp of the snapshot set.
 
 ## Striped volumes and snapshots
+
+This is the most useful part. `volume_group` is both the name of the LVM
+group and the tag key to identify volumes and snapshots. Setting
+`warm` to yes will
+[pre-warm](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-prewarm.html)
+the array, either by zeroing it out (in `create_array.yml`) or reading
+every block (in `restore_array.yml`). Only tested with XFS on CentOS
+7, although there's nothing too special there.
+
+It's possible this (at least create/restore) would work better as an
+Ansible role.
 
 ### Array creation
 
@@ -64,7 +95,9 @@ Major points of interest:
 
 ## Split-horizon A records for internal/external Route 53 zone pairs
 
-Both internal and external zones must already exist.
+Quick hack, since there's no way to specify an internal zone in the
+core `route53` module. Both internal and external zones must already
+exist.
 
 ```yaml
 - local_action: >
