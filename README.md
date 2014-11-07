@@ -59,6 +59,8 @@ Major points of interest:
     warm: no
 ```
 
+![AWS Console](http://i.imgur.com/hmD0S0p.png)
+
 ## Split-horizon A records for internal/external Route 53 zone pairs
 
 Both internal and external zones must already exist.
