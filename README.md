@@ -44,6 +44,8 @@ Major points of interest:
       - /mnt/xlog
       - /mnt/log
 ```
+↓
+![AWS Console](http://i.imgur.com/hmD0S0p.png)
 
 ### Restoring an array from a snapshot set
 
@@ -58,8 +60,6 @@ Major points of interest:
     piops: 100
     warm: no
 ```
-
-![AWS Console](http://i.imgur.com/hmD0S0p.png)
 
 ## Split-horizon A records for internal/external Route 53 zone pairs
 
