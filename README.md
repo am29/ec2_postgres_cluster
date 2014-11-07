@@ -45,6 +45,7 @@ Major points of interest:
       - /mnt/log
 ```
 ↓
+
 ![AWS Console](http://i.imgur.com/hmD0S0p.png)
 
 ### Restoring an array from a snapshot set
