@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+# Copyright 2014 William H. St. Clair
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import boto
+import collections
+import json
+import urllib
+import sys
+
+ec2 = boto.connect_ec2()
+
+instances = collections.defaultdict(list)
+
+for i in ec2.get_only_instances():
+    if 'group' in i.tags:
+        if i.state == 'running':
+            instances[i.tags['group']].append(i)
+
+external_ip = json.loads(urllib.urlopen("http://jsonip.com").read())['ip']
+
+inventory = {
+    '_meta': {
+        'hostvars': {
+            'localhost': {
+                'ansible_python_interpreter': '/usr/local/bin/python',
+                'ops_aws_region': 'us-east-1',
+                'ops_external_ip': external_ip,
+                'ops_key_name': 'wsc',
+                'ops_dns_zone': 'aws.willstclair.net.'
+            }
+        }
+    }
+}
+
+for k, v in instances.iteritems():
+    inventory[k] = {
+        'hosts': [i.ip_address for i in v],
+        'vars': {
+            'ansible_ssh_user': 'centos'
+        }
+    }
+
+if sys.argv[1] == '--list':
+    print json.dumps(inventory)
+elif sys.argv[1] == '--host':
+    print '{}'
+else:
+    print 'usage: ./inventory --list'

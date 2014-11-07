@@ -1,0 +1,11 @@
+{# -*- mode: jinja2 -*- #}
+
+# pg_hba.conf
+
+# Managed by Ansible; manual edits will be lost!
+# Last updated: {{ ansible_date_time.iso8601 }}
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+{% for item in pg_hba %}
+{{ item.type.ljust(8) }}{{ item.database.ljust(16) }}{{ item.user.ljust(16) }}{{ item.address.ljust(24) }}{{ item.method }}
+{% endfor %}

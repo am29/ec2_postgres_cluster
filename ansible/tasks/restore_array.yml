@@ -1,0 +1,68 @@
+# Copyright 2014 William H. St. Clair
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: restore | get instance facts
+  action: ec2_facts
+
+- name: restore | install mdadm and lvm
+  yum: name={{ item }} state=present
+  with_items:
+    - mdadm
+    - lvm2
+
+- name: restore | enable lvm2metad
+  service: name=lvm2-lvmetad state=started enabled=yes
+
+- name: restore | create volumes
+  local_action: ec2_vol
+  register: ebs_vols
+  sudo: no
+  args:
+    instance: "{{ ansible_ec2_instance_id }}"
+    device_name: "{{ item.device }}"
+    snapshot: "{{ item.snapshot_id }}"
+    iops: "{{ piops }}"
+    volume_size: "{{ item.volume_size }}"
+    region: "{{ ansible_ec2_placement_region }}"
+  with_snapshots:
+    volume_group: "{{ snapshot_volume_group }}"
+    timestamp: "{{ snapshot_timestamp }}"
+
+- name: restore | rename volume group
+  command: vgrename {{ snapshot_volume_group }} {{ volume_group }}
+  args:
+    creates: /dev/{{ volume_group }}
+    removes: /dev/{{ snapshot_volume_group }}
+  when: volume_group is defined
+
+- name: restore | wait for volume group
+  wait_for: path=/dev/{{ volume_group }}
+  when: volume_group is defined
+
+- name: restore | tag volumes
+  local_action: ec2_tag resource={{ item.volume_id }} region={{ ansible_ec2_placement_region }}
+  sudo: no
+  args:
+    tags:
+      volume_group: "{{ volume_group|default(snapshot_volume_group) }}"
+      device: "{{ item.device }}"
+  with_items: ebs_vols.results
+
+- name: restore | list logical volumes
+  command: /bin/ls -m1 /dev/{{ volume_group|default(snapshot_volume_group) }}
+  register: logical_volumes
+
+- name: restore | mount logical volumes
+  mount: name=/mnt/{{ item }} src=/dev/{{ volume_group|default(snapshot_volume_group) }}/{{ item }} fstype=xfs opts=nobarrier,noatime,noexec,nodiratime state=mounted
+  with_items: logical_volumes.stdout_lines

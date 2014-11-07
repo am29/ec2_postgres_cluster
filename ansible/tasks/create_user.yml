@@ -1,0 +1,4 @@
+- name: user | create users
+  postgresql_user: state=present name={{ item.name }} password={{ item.password }}
+  sudo_user: postgres
+  with_items: postgres.users

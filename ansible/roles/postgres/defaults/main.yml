@@ -1,0 +1,67 @@
+---
+pg_encoding: UTF-8
+
+# lc_messages, lc_monetary, lc_numeric, lc_time
+pg_locale: en_US.UTF-8
+
+# timezone, log_timezone
+pg_timezone: UTC
+
+# Connections and authentication: Connection settings
+pg_listen_addresses: "'*'"
+pg_port: 5432
+pg_max_connections: 100
+
+# Resource usage: Memory
+pg_shared_buffers: 128MB
+pg_work_mem: 16MB
+pg_maintenance_work_mem: 128MB
+
+# WAL: Settings
+pg_wal_level: hot_standby
+
+# WAL: Checkpoints
+pg_checkpoint_segments: 32
+pg_checkpoint_completion_target: 0.9
+
+# Replication: Sending server(s)
+pg_max_wal_senders: 3
+pg_max_replication_slots: 3
+
+# Replication: Standby servers
+pg_hot_standby: off
+
+# Query tuning: Planner cost constants
+pg_effective_cache_size: 4GB
+
+# Error reporting and logging: Where to log
+pg_log_destination: stderr
+pg_logging_collector: on
+pg_log_directory: pg_log
+pg_log_filename: postgresql-%a.log
+pg_log_truncate_on_rotation: on
+pg_log_rotation_age: 1d
+pg_log_rotation_size: 0
+pg_log_timezone: UTC
+
+# Error reporting and logging: What to log
+pg_log_line_prefix: < %m >
+
+# Client connection defaults: Locale and formatting
+pg_timezone: UTC
+pg_lc_messages: en_US.UTF-8
+pg_lc_monetary: en_US.UTF-8
+pg_lc_numeric: en_US.UTF-8
+pg_lc_time: en_US.UTF-8
+pg_default_text_search_config: pg_catalog.english
+
+# recovery.conf
+
+# Whether or not $PGDATA/recovery.conf is present
+pg_recovery_conf_is_present: no
+
+# Standby server parameters
+pg_standby_mode: off
+pg_primary_conninfo: ''
+pg_primary_slot_name: ''
+pg_trigger_file: ''

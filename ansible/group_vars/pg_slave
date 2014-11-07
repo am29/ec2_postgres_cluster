@@ -1,0 +1,51 @@
+# -*- mode: yaml -*-
+
+# Copyright 2014 William H. St. Clair
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+
+pg_data: /mnt/data
+pg_xlog: /mnt/xlog
+pg_log_directory: /mnt/log
+
+pg_hba:
+  - type: local
+    database: all
+    user: all
+    address: ''
+    method: peer
+  - type: host
+    database: all
+    user: all
+    address: samenet
+    method: md5
+  - type: host
+    database: replication
+    user: all
+    address: 10.0.0.0/16
+    method: trust
+
+logical_volumes:
+  - name: data
+    size: 90%VG
+    mount: /mnt/data
+    filesystem: xfs
+  - name: xlog
+    size: 5%VG
+    mount: /mnt/xlog
+    filesystem: xfs
+  - name: log
+    size: 5%VG
+    mount: /mnt/log
+    filesystem: xfs

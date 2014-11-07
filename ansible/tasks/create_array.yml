@@ -1,0 +1,84 @@
+# Copyright 2014 William H. St. Clair
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: create | get instance facts
+  action: ec2_facts
+
+- name: create | install mdadm and lvm
+  yum: name={{ item }} state=present
+  with_items:
+    - mdadm
+    - lvm2
+
+- name: create | enable lvm2metad
+  service: name=lvm2-lvmetad state=started enabled=yes
+
+- name: create | create volumes
+  local_action: ec2_vol
+  register: ebs_vols
+  sudo: no
+  args:
+    instance: "{{ ansible_ec2_instance_id }}"
+    device_name: "{{ item }}"
+    volume_size: "{{ size }}"
+    iops: "{{ piops }}"
+    region: "{{ ansible_ec2_placement_region }}"
+  with_items: devices
+
+- name: create | tag volumes
+  local_action: ec2_tag resource={{ item.volume_id }} region={{ ansible_ec2_placement_region }}
+  sudo: no
+  args:
+    tags:
+      volume_group: "{{ volume_group }}"
+      device: "{{ item.device }}"
+  with_items: ebs_vols.results
+
+- name: create | wait for EBS volumes
+  wait_for: path={{ item }}
+  with_items: devices
+
+- name: create | check if array exists
+  command: mdadm -D {{ mddev }}
+  ignore_errors: yes
+  register: mdstatus
+
+- name: create | create RAID array
+  command: mdadm -v --create {{ mddev }} --level={{ mdlevel }} --raid-devices={{ devices|length }} {{ devices|join(' ') }}
+  when: mdstatus.rc != 0
+
+- name: create | wait for RAID array
+  command: mdadm --wait {{ mddev }}
+  ignore_errors: yes
+  when: mdstatus.rc != 0
+
+- name: create | warm array
+  command: dd if=/dev/zero of={{ mddev }} bs=1M
+  ignore_errors: yes
+  when: warm is defined and warm and mdstatus.rc != 0
+
+- name: create | create volume group
+  lvg: vg={{ volume_group }} pvs={{ mddev }}
+
+- name: create | create logical volumes
+  lvol: vg={{ volume_group }} lv={{ item.name }} size={{ item.size }}
+  with_items: logical_volumes
+
+- name: create | format logical volumes
+  filesystem: fstype={{ item.filesystem }} dev=/dev/{{ volume_group }}/{{ item.name }}
+  with_items: logical_volumes
+
+- name: create | mount logical volumes
+  mount: name={{ item.mount }} src=/dev/{{ volume_group }}/{{ item.name }} fstype={{ item.filesystem }} opts=nobarrier,noatime,noexec,nodiratime state=mounted
+  with_items: logical_volumes

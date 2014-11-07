@@ -1,0 +1,34 @@
+- name: db | start PostgreSQL
+  service: name=postgresql-9.4 state=started
+
+- name: db | create databases
+  postgresql_db: |
+    state=present
+    name={{ item.name }}
+    encoding={{ postgres.encoding }}
+    lc_collate={{ postgres.locale }}
+    lc_ctype={{ postgres.locale }}
+    template={{ item.template }}
+  sudo_user: postgres
+  with_items: postgres.databases
+
+- name: db | revoke all on database from PUBLIC
+  postgresql_privs: |
+    state=absent
+    database={{ item.name }}
+    roles=PUBLIC
+    privs=ALL
+    type=database
+  sudo_user: postgres
+  with_items: postgres.databases
+
+- name: db | revoke all on public schema from PUBLIC
+  postgresql_privs: |
+    state=absent
+    database={{ item.name }}
+    roles=PUBLIC
+    privs=ALL
+    type=schema
+    objs=public
+  sudo_user: postgres
+  with_items: postgres.databases

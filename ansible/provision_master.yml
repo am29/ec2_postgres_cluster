@@ -1,0 +1,55 @@
+# Copyright 2014 William H. St. Clair
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: provision database master
+  hosts: pg_master
+  sudo: yes
+  vars:
+    replication_slots:
+      - replica
+    replication_username: replica
+    replication_password: replica
+    superuser_username: wsc
+    superuser_password: wsc
+
+  pre_tasks:
+    - include: tasks/create_array.yml
+      vars:
+        volume_group: pg_master
+        mdlevel: raid0
+        mddev: /dev/md0
+        devices: [ /dev/xvdh, /dev/xvdi, /dev/xvdj, /dev/xvdk ]
+        size: 5
+        piops: 100
+        warm: no
+
+  roles:
+    - role: postgres
+
+  tasks:
+    - name: start server
+      service: name=postgresql-9.4 state=started enabled=yes
+
+    - postgresql_user: state=present name={{ replication_username }} password={{ replication_password }} role_attr_flags=LOGIN,REPLICATION
+      sudo_user: postgres
+
+    - postgresql_user: state=present name={{ superuser_username }} password={{ superuser_password }} role_attr_flags=SUPERUSER
+      sudo_user: postgres
+
+    - pg_replication_slot: name={{ item }} state=present
+      sudo_user: postgres
+      with_items: replication_slots
+
+    - local_action: r53_split private_ip={{ ansible_ec2_local_ipv4 }} public_ip={{ ansible_ec2_public_ipv4 }} zone=aws.willstclair.net. hostname=db0.aws.willstclair.net. state=present
+      sudo: no

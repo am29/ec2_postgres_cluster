@@ -1,0 +1,226 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Network v3",
+    "Parameters": {
+	"zone0": {"Type":"String","Default":"us-east-1a"},
+	"zone1": {"Type":"String","Default":"us-east-1c"},
+	"zone2": {"Type":"String","Default":"us-east-1d"},
+        "allowssh": {"Type":"String","Default":"67.243.4.60/32"},
+	"blockPrefix": {"Type":"String","Default":"10.0"}
+    },
+    "Resources": {
+        "Vpc": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {"Fn::Join":[".",[{"Ref":"blockPrefix"},"0.0/16"]]},
+		"EnableDnsHostnames": true,
+		"EnableDnsSupport": true
+            }
+        },
+        "Gateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {}
+        },
+        "GatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId":             {"Ref":"Vpc"},
+                "InternetGatewayId": {"Ref":"Gateway"}
+            }
+        },
+        "RtTbl": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {"Ref":"Vpc"}
+            }
+        },
+        "WanRt": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "GatewayAttachment",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "RouteTableId": {"Ref":"RtTbl"},
+                "GatewayId": {"Ref":"Gateway"}
+            }
+        },
+        "Nacl": {
+            "Type": "AWS::EC2::NetworkAcl",
+            "Properties": {
+                "VpcId": {"Ref":"Vpc"}
+            }
+        },
+        "NaclInEphmrl": {
+            "Type": "AWS::EC2::NetworkAclEntry",
+            "Properties": {
+                "CidrBlock":    "0.0.0.0/0",
+                "Egress":       false,
+                "NetworkAclId": {"Ref":"Nacl"},
+                "PortRange":    {"From":32768,"To":61000},
+                "Protocol":     6,
+                "RuleAction":   "allow",
+                "RuleNumber":   10
+            }
+        },
+        "NaclInMgmt": {
+            "Type": "AWS::EC2::NetworkAclEntry",
+            "Properties": {
+                "CidrBlock":    {"Ref":"allowssh"},
+                "Egress":       false,
+                "NetworkAclId": {"Ref":"Nacl"},
+                "PortRange":    {"From":0,"To":65535},
+                "Protocol":     6,
+                "RuleAction":   "allow",
+                "RuleNumber":   20
+            }
+        },
+	"NaclInLocal": {
+            "Type": "AWS::EC2::NetworkAclEntry",
+            "Properties": {
+                "CidrBlock":    {"Fn::Join":[".",[{"Ref":"blockPrefix"},"0.0/16"]]},
+                "Egress":       false,
+                "NetworkAclId": {"Ref":"Nacl"},
+                "PortRange":    {"From":0,"To":65535},
+                "Protocol":     6,
+                "RuleAction":   "allow",
+                "RuleNumber":   30
+            }
+	},
+	"NaclOutAll": {
+            "Type": "AWS::EC2::NetworkAclEntry",
+            "Properties": {
+                "CidrBlock":    "0.0.0.0/0",
+                "Egress":       true,
+                "NetworkAclId": {"Ref":"Nacl"},
+                "PortRange":    {"From":0,"To":65535},
+                "Protocol":     6,
+                "RuleAction":   "allow",
+                "RuleNumber":   10
+            }
+        },
+
+        "Sbnt0": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {"Ref":"zone0"},
+                "CidrBlock": {"Fn::Join":[".",[{"Ref":"blockPrefix"},"0.0/24"]]},
+                "VpcId": {"Ref":"Vpc"}
+            }
+        },
+	"SbntNacl0": {
+	    "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+	    "Properties": {
+		"NetworkAclId": {"Ref":"Nacl"},
+		"SubnetId": {"Ref":"Sbnt0"}
+	    }
+	},
+	"SbntRtTbl0": {
+	    "Type":"AWS::EC2::SubnetRouteTableAssociation",
+	    "Properties": {
+		"RouteTableId": {"Ref":"RtTbl"},
+		"SubnetId": {"Ref":"Sbnt0"}
+	    }
+	},
+
+        "Sbnt1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {"Ref":"zone1"},
+                "CidrBlock": {"Fn::Join":[".",[{"Ref":"blockPrefix"},"64.0/24"]]},
+                "VpcId": {"Ref":"Vpc"}
+            }
+        },
+	"SbntNacl1": {
+	    "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+	    "Properties": {
+		"NetworkAclId": {"Ref":"Nacl"},
+		"SubnetId": {"Ref":"Sbnt1"}
+	    }
+	},
+	"SbntRtTbl1": {
+	    "Type":"AWS::EC2::SubnetRouteTableAssociation",
+	    "Properties": {
+		"RouteTableId": {"Ref":"RtTbl"},
+		"SubnetId": {"Ref":"Sbnt1"}
+	    }
+	},
+
+        "Sbnt2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {"Ref":"zone2"},
+                "CidrBlock": {"Fn::Join":[".",[{"Ref":"blockPrefix"},"128.0/24"]]},
+                "VpcId": {"Ref":"Vpc"}
+            }
+        },
+	"SbntNacl2": {
+	    "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+	    "Properties": {
+		"NetworkAclId": {"Ref":"Nacl"},
+		"SubnetId": {"Ref":"Sbnt2"}
+	    }
+	},
+	"SbntRtTbl2": {
+	    "Type":"AWS::EC2::SubnetRouteTableAssociation",
+	    "Properties": {
+		"RouteTableId": {"Ref":"RtTbl"},
+		"SubnetId": {"Ref":"Sbnt2"}
+	    }
+	},
+
+	"DbSg": {
+	    "Type": "AWS::EC2::SecurityGroup",
+	    "Properties": {
+		"GroupDescription": "Management",
+		"VpcId": {"Ref":"Vpc"},
+		"SecurityGroupIngress": [
+                    {
+			"IpProtocol":"tcp",
+			"FromPort": 0,
+			"ToPort": 65535,
+			"CidrIp": {"Ref":"allowssh"}
+		    }
+		],
+		"SecurityGroupEgress": [
+		    {
+			"IpProtocol":"tcp",
+			"FromPort": 80,
+			"ToPort": 80,
+			"CidrIp": "0.0.0.0/0"
+		    },
+		    {
+			"IpProtocol":"tcp",
+			"FromPort": 443,
+			"ToPort": 443,
+			"CidrIp": "0.0.0.0/0"
+		    }
+		]
+	    }
+	},
+	"DbReplicationIn": {
+	    "Type": "AWS::EC2::SecurityGroupIngress",
+	    "Properties": {
+		"IpProtocol": "tcp",
+		"FromPort": 5432,
+		"ToPort": 5432,
+		"SourceSecurityGroupId": {"Fn::GetAtt": ["DbSg", "GroupId"]},
+		"GroupId": {"Fn::GetAtt": ["DbSg", "GroupId"]}
+	    }
+	},
+	"DbReplicationOut": {
+	    "Type": "AWS::EC2::SecurityGroupEgress",
+	    "Properties": {
+		"IpProtocol": "tcp",
+		"FromPort": 5432,
+		"ToPort": 5432,
+		"DestinationSecurityGroupId": {"Fn::GetAtt": ["DbSg", "GroupId"]},
+		"GroupId": {"Fn::GetAtt": ["DbSg", "GroupId"]}
+	    }
+	}
+
+    },
+    "Outputs": {
+	"subnet0": {"Value":{"Ref":"Sbnt0"}},
+	"subnet1": {"Value":{"Ref":"Sbnt1"}},
+	"dbSg": {"Value":{"Ref":"DbSg"}}
+    }
+}
