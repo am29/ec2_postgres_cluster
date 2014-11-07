@@ -21,7 +21,7 @@ PostgreSQL 9.4 on CentOS 7 on EC2 using striped EBS volumes. (Largely proof-of-c
   freezing the logical volumes, requesting snapshots of the underlying
   EBS volumes, and then unfreezing them.
 
-- `provision_slave.yml` creates and starts a new PostgreSQL replica
+- `provision_replica.yml` creates and starts a new PostgreSQL replica
   given the volume_group and timestamp of the snapshot set.
 
 ## Striped volumes and snapshots
